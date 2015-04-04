@@ -1,0 +1,13 @@
+<dependency>
+  <groupId>de.tucottbus.kt.jlab</groupId>
+  <artifactId>jLab</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+</dependency>
+<repository>
+  <id>jLabGithub</id>
+  <url>https://raw.githubusercontent.com/matthias-wolff/jLab/mvn-repo/</url>
+  <snapshots>
+    <enabled>true</enabled>
+    <updatePolicy>always</updatePolicy>
+  </snapshots>
+</repository>
