@@ -347,7 +347,8 @@ public class DataCompInfo
     int nGroup          = Integer.parseInt(aProps[2]);
     String sDisplayType = aProps[3];
     // TODO: Backward compatibility -->
-    sDisplayType = sDisplayType.replace("de.tudresden.ias.eclipse.dlabpro.editors.vis.components.displays.","de.tucottbus.kt.jlab.datadisplays.components.displays.");
+    sDisplayType = sDisplayType.replace("de.tudresden.ias.eclipse.dlabpro.editors.vis.components.displays.","de.tucottbus.kt.jlab.datadisplays.widgets.displays.");
+    sDisplayType = sDisplayType.replace("de.tucottbus.kt.jlab.datadisplays.components.displays.","de.tucottbus.kt.jlab.datadisplays.widgets.displays.");
     // <--
     boolean bVisible    = Boolean.parseBoolean(aProps[4]);
     
