@@ -1,4 +1,4 @@
-package de.tucottbus.kt.dlabpro.executables;
+package de.tucottbus.kt.jlab.executables;
 
 import java.io.File;
 import java.io.FileNotFoundException;
