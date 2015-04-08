@@ -1,4 +1,4 @@
-package de.tucottbus.kt.jlab.executables;
+package de.tucottbus.kt.dlabpro;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
+
+import de.tucottbus.kt.dlabpro.recognizer.Recognizer;
 
 /**
  * A low-level wrapper for the dLabPro executables and executable UASR scripts.
@@ -100,17 +102,27 @@ public abstract class Executable extends Observable implements Runnable
    */
   public static final char MSGT_WRP = ':'; 
   
+  /**
+   * Message indicating that the executable has finally terminated.
+   */
+  public static final char MSGT_EXIT = 'X'; 
+  
   // -- Fields --
   
   /**
    * The executable process monitor thread.
    */
   protected Thread monitor;
-  
+
   /**
    * The executable file.
    */
   protected File exeFile;
+  
+  /**
+   * The program arguments.
+   */
+  protected ArrayList<String> arguments;
   
   /**
    * The executable process.
@@ -121,28 +133,41 @@ public abstract class Executable extends Observable implements Runnable
    * Flag indicating that the executable process should be restarted when it
    * terminates unexpectedly.
    */
-  protected boolean autoRestart;
+  private boolean autoRestart;
+  
+  /**
+   * Flag indicating line output mode. In this mode output pipe handlers only 
+   * deliver complete lines of process output. A complete line is terminated by
+   * a line feed <code>'\n'</code>, a carriage return <code>'\r'</code>, or a 
+   * a carriage return immediately followed by a carriage return 
+   * <code>"\n\r"</code>.
+   */
+  private boolean lineMode;
   
   // -- Constructors --
 
   /**
-   * Creates a new executable instance. Applications <em>must</em> call {@link #dispose()}
-   * when the instance is not longer needed.
+   * Creates a new executable instance. Applications <em>must</em> call
+   * {@link #dispose()} when the instance is not longer needed.
    * 
    * @param exeFile
    *          The executable file.
+   * @param arguments
+   *          An array of command line arguments, may be <code>null</code>.
    * @throws FileNotFoundException
    *           If the executable was not found.
    * @throws IllegalArgumentException
    *           If the <code>exeFile</code> is <code>null</code>.
    */
-  public Executable(File exeFile)
+  public Executable(File exeFile, ArrayList<String> arguments)
   throws FileNotFoundException, IllegalArgumentException
   {
     if (exeFile==null) throw new IllegalArgumentException();
     
     // Initialize
     this.exeFile = exeFile;
+    this.arguments = arguments;
+    this.lineMode = isLineMode();
     
     // Start
     this.monitor = new Thread(this);
@@ -157,10 +182,13 @@ public abstract class Executable extends Observable implements Runnable
    * Inputs a command into the executable.
    * 
    * @param command
-   *          The command.
+   *          The command. A line break <code>'\n'</code> will be appended to
+   *          the command.
    */
   protected void enterCommand(String command)
   {
+    if (!isAlive())
+      throw new IllegalThreadStateException("Executable terminated.");
     if (process==null)
       throw new IllegalThreadStateException("Executable process does not exist.");
     
@@ -170,12 +198,12 @@ public abstract class Executable extends Observable implements Runnable
     try
     {
       process.getOutputStream().write(command.getBytes());
-      process.getOutputStream().flush();
     }
     catch (Exception e)
     {
       e.printStackTrace();
     }
+    try { process.getOutputStream().flush(); } catch (Exception e) {}
   }
 
   /**
@@ -183,20 +211,33 @@ public abstract class Executable extends Observable implements Runnable
    * 
    * @param type
    *          One of the <code>MSGT_XXX</code> constants.
-   * @param msg
+   * @param message
    *          The message.
    */
-  protected void dispatchMessage(char type, String msg)
+  protected synchronized void dispatchMessage(char type, String message)
   {
     // Dispatch message to observers
     setChanged();
-    notifyObservers(type+msg);
+    notifyObservers(type+message);
   }
 
   // -- Life cycle --
   
   /**
-   * (Re-)launches the executable process.
+   * Sets or clears to auto-restart flag. Using this method derived classes may 
+   * control automatic restart of unexpectedly terminated or crashed wrapped 
+   * executables.
+   * 
+   * @param autoRestart
+   *          The new auto-restart flag.
+   */
+  protected void setAutoRestart(boolean autoRestart)
+  {
+    this.autoRestart = autoRestart;
+  }
+  
+  /**
+   * (Re-)launches the executable.
    * 
    * @throws IllegalStateException
    *           If the executable is disposed.
@@ -209,30 +250,93 @@ public abstract class Executable extends Observable implements Runnable
     
     ArrayList<String> cmdline = new ArrayList<String>();    
     cmdline.add(exeFile.getAbsolutePath());
-    if (getArguments()!=null)
-      cmdline.addAll(getArguments());
+    if (getFixArguments()!=null)
+      cmdline.addAll(getFixArguments());
+    if (this.arguments!=null)
+      cmdline.addAll(arguments);
     dispatchMessage(MSGT_WRP,"Launching: "+cmdline.toString());
     try
     {
       ProcessBuilder builder = new ProcessBuilder(cmdline);
       process = builder.start();
-      (new OutputPipeHandler(process,MSGT_OUT)).start();
-      (new OutputPipeHandler(process,MSGT_ERR)).start();
+      (new OutputPipeHandler(MSGT_OUT)).start(); 
+      (new OutputPipeHandler(MSGT_ERR)).start();
     }
     catch (Exception e)
     {
       e.printStackTrace();
     }
   }
+  
+  public boolean isAlive()
+  {
+    return monitor!=null;
+  }
+  
+  public void run()
+  {
+    dispatchMessage(MSGT_WRP,"Monitor thread started");
+    while (monitor!=null)
+    {
+      try { Thread.sleep(100); } catch (InterruptedException e) {};
+      if (process==null)
+      {
+        autoRestart = false;
+        try
+        {
+          launch();
+        }
+        catch (FileNotFoundException e)
+        {
+          // Fatal...
+          break;
+        }
+      }
+      synchronized (this)
+      {
+        try
+        {
+          int exitCode = process.exitValue();
+          if (autoRestart)
+          {
+            dispatchMessage(MSGT_WRP,"Terminated unexpectedly");
+            try
+            {
+              launch();
+            }
+            catch (FileNotFoundException e)
+            {
+              // Fatal...
+              break;
+            }
+          }
+          else
+          {
+            dispatchMessage(MSGT_WRP,"Executable terminated (exit code: "
+              + exitCode + ")");
+            break;
+          }
+        }
+        catch (IllegalThreadStateException e)
+        {
+          // Process is running -> nothing to be done.
+        }
+      }
+    }
+    monitor = null;
+    dispatchMessage(MSGT_WRP,"Monitor thread ended");
+    dispatchMessage(MSGT_EXIT,"");
+  }
 
   /**
-   * Terminates the executable process. The method first tries to shutdown the executable gracefully
-   * by inputting the exit command. If this fails, the process is forcibly terminated. The method
-   * blocks until the executable has actually terminated either way. If the executable has already
-   * terminated the method does nothing and returns 0. 
+   * Terminates the executable. The method first tries to shutdown the
+   * executable gracefully by inputting the {@linkplain #getExitCommand() exit
+   * command}. If this fails, the process is forcibly terminated. The method
+   * blocks until the executable has actually terminated either way. If the
+   * executable has already terminated the method does nothing and returns 0.
    * 
-   * @return The processes exit value or {@link Integer#MIN_VALUE} if the process has been
-   *         forcefully terminated.
+   * @return The processes exit value or {@link Integer#MIN_VALUE} if the
+   *         process has been forcefully terminated.
    */
   protected int terminate()
   {
@@ -272,65 +376,11 @@ public abstract class Executable extends Observable implements Runnable
     
     return exitValue;
   }
-  
-  public void run()
-  {
-    dispatchMessage(MSGT_WRP,"Monitor thread started");
-    while (monitor!=null)
-    {
-      try { Thread.sleep(100); } catch (InterruptedException e) {};
-      if (process==null)
-      {
-        autoRestart = false;
-        try
-        {
-          launch();
-        }
-        catch (FileNotFoundException e)
-        {
-          // Fatal...
-          return;
-        }
-      }
-      synchronized (this)
-      {
-        try
-        {
-          int exitCode = process.exitValue();
-          if (autoRestart)
-          {
-            dispatchMessage(MSGT_WRP,"Terminated unexpectedly");
-            try
-            {
-              launch();
-            }
-            catch (FileNotFoundException e)
-            {
-              // Fatal...
-              return;
-            }
-          }
-          else
-          {
-            dispatchMessage(MSGT_WRP,"Executable failed to start (exit code: "
-              + exitCode + ")");
-            return;
-          }
-        }
-        catch (IllegalThreadStateException e)
-        {
-          // Process is running -> nothing to be done.
-        }
-      }
-    }
-    terminate();
-    dispatchMessage(MSGT_WRP,"Monitor thread ended");
-  }
 
   /**
-   * Disposes the executable and frees all system resources. The method blocks until disposing is
-   * complete. If the executable is already disposed the method does nothing and returns
-   * immediately.
+   * Disposes the executable and frees all system resources. The method blocks
+   * until disposing is complete. If the executable is already disposed the
+   * method does nothing and returns immediately.
    */
   public void dispose()
   {
@@ -355,8 +405,22 @@ public abstract class Executable extends Observable implements Runnable
   }
   
   // -- Abstract API --
+
+  /**
+   * Indicates whether this executable wrapper runs in line output mode. In this
+   * mode output pipe handlers only deliver complete lines of process output. A
+   * complete line is terminated by a line feed <code>'\n'</code>, a carriage
+   * return <code>'\r'</code>, or a a carriage return immediately followed by a
+   * carriage return <code>"\n\r"</code>.
+   */
+  public abstract boolean isLineMode();
   
-  public abstract ArrayList<String> getArguments();
+  /**
+   * Returns the fix command line arguments for {@link #launch()}. Additional
+   * arguments can be passed to the {@linkplain #Executable(File, ArrayList) 
+   * constructor.}
+   */
+  public abstract ArrayList<String> getFixArguments();
   
   /**
    * Returns the exit command. If there is no exit command, the method should
@@ -408,14 +472,14 @@ public abstract class Executable extends Observable implements Runnable
   // -- Nested classes --
   
   /**
-   * Instances of this class read and dispatch a processes standard or error output.
+   * Instances of this class read and dispatch a processes standard or error
+   * output.
    */
   protected class OutputPipeHandler extends Thread
   {
-    protected Process     process;
     protected InputStream is;
     protected char        type;
-
+    
     /**
      * Creates a new output pipe handler.
      * 
@@ -425,7 +489,7 @@ public abstract class Executable extends Observable implements Runnable
      *          The pipe type, {@link Recognizer#MSGT_OUT MSGT_OUT} for the standard output,
      *          {@link Recognizer#MSGT_ERR MSGT_ERR} for the error output.
      */
-    protected OutputPipeHandler(Process process, char type)
+    protected OutputPipeHandler(char type)
     {
       is = process.getInputStream();
       if (type==Executable.MSGT_ERR)
@@ -433,37 +497,44 @@ public abstract class Executable extends Observable implements Runnable
       this.type = type;
       //setDaemon(true);
     }
-
+    
     @Override
     public void run()
     {
+      boolean cr  = false;
+      String line = "";
       String prefix = type==MSGT_ERR?"Error":"Standard"; 
       dispatchMessage(MSGT_WRP,prefix+" output handler started");
-      String line = "";
-      while (true)
+      while (process.isAlive())
       {
         try
         {
-          process.exitValue();
-          break;
-        }
-        catch (Exception e)
-        {
-        }
-        
-        try
-        {
-          int in = is.read();
-          if (in<0) break;
-          char c = (char)in;
-          if (c=='\n' || c=='\r')
+          if (lineMode || is.available()>0)
           {
-            if (line.length()>0)
-              dispatchMessage(type,line);
-            line = "";
+            int in = is.read();
+            if (in<0) break;
+            char c = (char)in;
+            if (c=='\n' || c=='\r')
+            {
+              if (!lineMode && (c=='\r'||!cr))
+                line += "\n";
+              if (line.length()>0)
+                dispatchMessage(type,line);
+              line = "";
+            }
+            else
+              line+=c;
+            cr = (c=='\r');
           }
           else
-            line+=c;
+            try
+            {
+              Thread.sleep(10);
+              if (line.length()>0)
+                dispatchMessage(type,line);
+              line = "";
+            }
+            catch (InterruptedException e2) {}
         }
         catch (IOException e)
         {
@@ -471,6 +542,8 @@ public abstract class Executable extends Observable implements Runnable
         }
       }
       try { is.close(); } catch (IOException e) { e.printStackTrace(); }
+      if (line.length()>0)
+        dispatchMessage(type,line);
       dispatchMessage(MSGT_WRP,prefix+" output handler ended");
     }
   }
