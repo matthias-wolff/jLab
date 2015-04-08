@@ -1,4 +1,4 @@
-package de.tucottbus.kt.jlab.executables;
+package de.tucottbus.kt.dlabpro;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,26 +8,26 @@ import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 
+import de.tucottbus.kt.dlabpro.recognizer.Recognizer;
+
 public class Dlabpro extends Executable
 {
-  public Dlabpro()
+  public Dlabpro(ArrayList<String> arguments)
   throws FileNotFoundException,IllegalArgumentException
   {
-    super(findExecutable("dlabpro"));
+    super(findExecutable("dlabpro"),arguments);
   }
   
-  public Dlabpro(File exeFile)
+  public Dlabpro(File exeFile,ArrayList<String> arguments)
   throws FileNotFoundException,IllegalArgumentException
   {
-    super(exeFile);
+    super(exeFile,arguments);
   }
 
   @Override
-  public ArrayList<String> getArguments()
+  public ArrayList<String> getFixArguments()
   {
     ArrayList<String> args = new ArrayList<String>();
-    args.add("--pipemode");
-    args.add("--logo");
     return args;
   }
   
@@ -35,6 +35,12 @@ public class Dlabpro extends Executable
   public String getExitCommand()
   {
     return "quit";
+  }
+
+  @Override
+  public boolean isLineMode()
+  {
+    return false;
   }
 
   // -- Main method --
@@ -62,14 +68,18 @@ public class Dlabpro extends Executable
   {
     try
     {
-      final Dlabpro rec = new Dlabpro();
-      rec.addObserver(new Observer()
+      final Dlabpro dlabpro = new Dlabpro(null);
+      dlabpro.addObserver(new Observer()
       {
+        
         public void update(Observable o, Object arg)
-        {
+        {          
           char   type = ((String)arg).charAt(0);
           String msg  = ((String)arg).substring(1);
-          String echo = String.format("\n[EXE%c %s]",type,msg);
+          while (msg.endsWith("\n"))
+            msg = msg.substring(0,msg.length()-1);
+          if (msg.length()==0) return;
+          String echo = String.format("\n[EXE%c] %s",type,msg);
           
           switch (type)
           {
@@ -81,27 +91,48 @@ public class Dlabpro extends Executable
           case Executable.MSGT_ERR:
             System.err.print(echo);
             break;
+          case Executable.MSGT_EXIT:
+            // HACK: Get rid of blocked readLine in main loop
+            System.exit(0);
           }
         }
+        
+        /*
+        public void update(Observable o, Object arg)
+        {          
+          char   type = ((String)arg).charAt(0);
+          String msg  = ((String)arg).substring(1);
+          
+          switch (type)
+          {
+          case Executable.MSGT_OUT:
+            System.out.print(msg);
+            break;
+          case Executable.MSGT_ERR:
+            System.err.print(msg);
+            break;
+          case Executable.MSGT_EXIT:
+            // HACK: Get rid of blocked readLine in main loop
+            System.exit(0);
+          }
+        }
+        */
       });
       
       BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-      while (true)
+      while (dlabpro.isAlive())
       {
         String input = in.readLine();
-        if (input==null || rec.getExitCommand().equals(input)) break;
-        rec.enterCommand(input);
+        if (dlabpro.isAlive())
+          dlabpro.enterCommand(input);
       }
       
-      rec.dispose();
+      dlabpro.dispose();
     }
     catch (Exception e)
     {
       e.printStackTrace();
     }
-
-    System.out.print("\n[EXE: End of Dlabpro.main method]\n");  
   }
-
 
 }
