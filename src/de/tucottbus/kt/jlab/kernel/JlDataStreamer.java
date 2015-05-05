@@ -1,15 +1,13 @@
 package de.tucottbus.kt.jlab.kernel;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.Observable;
 
-import javax.swing.Timer;
 
-
-public class JlDataStreamer extends Observable implements ActionListener
+public class JlDataStreamer extends Observable implements Runnable
 {
-  private Timer       timer;
+  private Thread      runner;
+  private boolean     bActive;
+  private long        nInterval;   // Interval between data packages in nanoseconds
   private boolean     bPause;
   private JlFifoQueue target;
   private int         nBlockLength;
@@ -40,8 +38,8 @@ public class JlDataStreamer extends Observable implements ActionListener
    */
   public boolean isActive()
   {
-    if (timer==null) return false;
-    return timer.isRunning();
+    if (runner==null) return false;
+    return runner.isAlive();
   }
   
   /**
@@ -51,7 +49,7 @@ public class JlDataStreamer extends Observable implements ActionListener
    */
   public boolean isPaused()
   {
-    if (timer==null) return false;
+    if (runner==null) return false;
     return bPause;
   }
   
@@ -70,7 +68,7 @@ public class JlDataStreamer extends Observable implements ActionListener
    * @throws IllegalArgumentException
    *          if <code>nComp</code> is not a valid component index 
    */
-  public void stream(JlData idSrc, int nComp)
+  public synchronized void stream(JlData idSrc, int nComp)
   throws IllegalThreadStateException, IllegalArgumentException
   {
     JlObject.log("\n   JlDataStreamer.stream(idSrc,"+nComp+");");
@@ -79,32 +77,37 @@ public class JlDataStreamer extends Observable implements ActionListener
     if (idSrc==null) return;
     if (nComp<0 || nComp>=idSrc.getDimension())
       throw new IllegalArgumentException("Invalid component index "+nComp);
-    if (timer!=null)
+    if (runner!=null)
       throw new IllegalThreadStateException("Already streaming");
     
     this.bPause = false;
     this.idSrc  = idSrc;
     this.nComp  = nComp;
     this.nRec   = 0;
-    int nDelay  = 0;
+    
+    // Compute interval
     if ("s".equals(new String(idSrc.runit)))
-      nDelay = (int)(this.nBlockLength*idSrc.rinc*1000);
+      nInterval = (long)(this.nBlockLength*idSrc.rinc*1000000000);
     else if ("ms".equals(new String(idSrc.runit)))
-      nDelay = (int)(this.nBlockLength*idSrc.rinc);
+      nInterval = (long)(this.nBlockLength*idSrc.rinc*1000000);
     else
     {
       JlObject.WARNING("Cannot stream in real time (unknown runit \"" + 
         (new String(idSrc.runit)) + "\")");
-      nDelay = 1;
+      nInterval = 1;
     }
-    if (nDelay<=0)
+    if (nInterval<=0)
     {
       JlObject.WARNING("Cannot stream in real time. Increase buffer length!");
-      nDelay = 1;
+      nInterval = 1;
     }
-    JlObject.log("\n   - Timer delay       : "+nDelay+" ms");
-    timer = new Timer(nDelay,this);
-    timer.start();
+    JlObject.log("\n   - Timer interval    : "+nInterval+" ns");
+    
+    // Start streamer thread
+    runner = new Thread(this);
+    runner.setDaemon(true);
+    runner.setPriority(Thread.MAX_PRIORITY);
+    runner.start();
     setChanged();
     notifyObservers();
   }
@@ -115,10 +118,11 @@ public class JlDataStreamer extends Observable implements ActionListener
   public synchronized void stop()
   {
     JlObject.log("\n\n   JlDataStreamer.stop()");
-    if (timer==null) return;
-    timer.stop();
+    if (runner==null) return;
+    bActive = false;
+    try { runner.join(3*nInterval/1000000); } catch (InterruptedException e) {}
     if (target!=null) target.put(null);
-    timer = null;
+    runner = null;
     idSrc = null;
     nComp = -1;
     nRec = -1;
@@ -159,23 +163,37 @@ public class JlDataStreamer extends Observable implements ActionListener
     notifyObservers();
   }
   
-  // -- Implementation of the ActionListener interface --
+  // -- Implementation of the Runnable interface --
   
-  public void actionPerformed(ActionEvent e)
+  @Override
+  public void run()
   {
-    if (timer==null || idSrc==null) return;
-
-    if (!bPause)
-      synchronized (this)
-      {
-        // Stream data
-        int nCount = Math.min(nBlockLength,idSrc.getLength()-nRec);
-        if (target!=null)
-          target.put(idSrc.selectRecs(nRec,nCount).getComp(nComp));
-        nRec += nBlockLength;
-        
-        // At the end of data
-        if (nRec>=idSrc.getLength()) stop();
-      }
+    bActive         = true;
+    long nStartTime = System.nanoTime();
+    long nIte       = 0;
+    
+    while (bActive && idSrc!=null)
+    {
+      if (!bPause)
+        synchronized (this)
+        {
+          // Stream data
+          int nCount = Math.min(nBlockLength,idSrc.getLength()-nRec);
+          if (target!=null)
+            target.put(idSrc.selectRecs(nRec,nCount).getComp(nComp));
+          nRec += nBlockLength;
+          
+          // At the end of data
+          if (nRec>=idSrc.getLength()) stop();
+        }
+      
+      // Compute precise time-out until next data package
+      nIte++;
+      long nActualInterval = Math.max(nStartTime+nIte*nInterval-System.nanoTime(),0);
+      int nIntervalMs = (int)(nActualInterval/1000000);
+      int nIntervalNs = (int)(nActualInterval%1000000);
+      try { Thread.sleep(nIntervalMs,nIntervalNs); }
+      catch (InterruptedException e) {}
+    }
   }
 }

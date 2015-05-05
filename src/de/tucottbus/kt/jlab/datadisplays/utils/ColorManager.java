@@ -216,8 +216,8 @@ public class ColorManager implements DdPreferenceConstants
       m_aCompBgColor[0] = new Color(null,192,192,192);
       m_aCompBgColor[1] = new Color(null,255,051,102);
       m_aCompBgColor[2] = new Color(null,000,102,204);
-      m_aCompBgColor[3] = new Color(null,255,255,102);
-      m_aCompBgColor[4] = new Color(null,051,204,102);
+      m_aCompBgColor[3] = new Color(null,051,204,102);
+      m_aCompBgColor[4] = new Color(null,255,255,102);
       m_nCurCompColorTable = 0;
     }
     

@@ -511,6 +511,7 @@ public class JlData extends JlObject
    */
   public void dcopy(JlData idSrc)
   {
+    if (idSrc==null) return;
     rinc      = idSrc.rinc;
     rwid      = idSrc.rwid;
     rofs      = idSrc.rofs;
