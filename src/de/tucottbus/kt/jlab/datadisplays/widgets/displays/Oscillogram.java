@@ -324,7 +324,7 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 			double nTime; // Real time (ms)
 			double nSr = getPlaySrate(); // Playback sample rate
 			int nSi = (int) (m_nTs / 1000. * nSr); // Current sample index
-			double nAmp = getPlayAmp(); // Amplification
+			double nAmp = getPlayGain(); // Amplification
 			short nSv = 0; // Current sample value
 			byte[] aSv = new byte[m_iSdl.getBufferSize()]; // Sample value writing buffer
 			int nPlayComp = 0;
@@ -374,7 +374,7 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 
 	private Player m_iPlayer = null;
 
-	private double m_nPlayAmp = -1;
+	private double m_nPlayGain = -1;
 
 	/**
 	 * Plays back the sound data stored in {@link mData}.
@@ -409,8 +409,9 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 	 * @return <code>true</code> if sound playback is possible,
 	 * <code>false</code> otherwise.
 	 */
-	public boolean canPlay() {
-		return getPlayAmp() > 0.;
+	public boolean canPlay() 
+	{
+		return getPlayGain() > 0.;
 	}
 
 	/**
@@ -466,17 +467,34 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 	}
 
 	/**
-	 * Determines a suitable amplification factor for playing back the
-	 * oscillogram data stored in {@link mData}. 
+	 * Sets the gain factor for playing-back the data stored in this oscillogram.
+	 * The data values multiplied with the gain factor must be in the interval
+	 * [-32767...32768]. 
 	 * 
-	 * @return The amplification (1, 128 or 32768) or 0, if the data are not
-	 * suitable for playback.
+	 * @param gain
+	 *          The new gain factor.
+	 * @see #getPlayGain()
+	 * @see #getPlaySrate()
 	 */
-	public double getPlayAmp() {
-    if (m_nPlayAmp>=0) return m_nPlayAmp;
+	public void setPlayGain(double gain)
+	{
+	  m_nPlayGain = gain;
+	}
+	
+  /**
+   * Returns the gain factor for play-back of this oscillogram. If no gain
+   * factor was set through {@link #setPlayGain(float)}, the method
+   * automatically determines a suitable gain factor for playing back the
+   * oscillogram data stored in {@link mData}.
+   * 
+   * @return The gain factor or 0, if the data are not suitable for play-back.
+   * @see #setPlayGain(double)
+   * @see #getPlaySrate()
+   */
+	public double getPlayGain() 
+	{
     if (m_aDci == null && m_aDci.length == 0)
     {
-      m_nPlayAmp = 0.;
       return 0.;
     }
 
@@ -491,10 +509,11 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 		if (nOnlyVisible<0)
 		{
       // None visible
-      m_nPlayAmp=0.;
       return 0.;
 		}
-		
+    if (m_nPlayGain>=0) return m_nPlayGain;
+
+    // Automatically detect play amplification if not set
 		// TODO: use min/max in m_aDci[0]!
 		double nMin = Double.MAX_VALUE;
 		double nMax = Double.MIN_VALUE;
@@ -509,16 +528,16 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 		}
 
 		if (nMin >= -0.0001 && nMax <= 0.0001)
-			m_nPlayAmp = 0.;
+			m_nPlayGain = 0.;
 		else if (nMin >= -1.01 && nMax <= 1.01)
-			m_nPlayAmp = 32768.;
+			m_nPlayGain = 32768.;
 		else if (nMin >= -128 && nMax <= 128)
-			m_nPlayAmp = 128.;
+			m_nPlayGain = 128.;
 		else if (nMin >= -32768 && nMax <= 32768)
-			m_nPlayAmp = 1.;
+			m_nPlayGain = 1.;
 		else
-			m_nPlayAmp = 0.;
-		return m_nPlayAmp;
+			m_nPlayGain = 0.;
+		return m_nPlayGain;
 	}
 
   /**
