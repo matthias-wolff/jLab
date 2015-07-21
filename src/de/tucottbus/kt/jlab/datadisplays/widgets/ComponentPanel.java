@@ -54,7 +54,7 @@ import de.tucottbus.kt.jlab.kernel.JlData;
 public class ComponentPanel extends Composite {
 	
   private   Vector m_iDisplayEventListeners;
-  protected LinkedList mDataDisplayPanelList;
+  protected LinkedList<DataDisplayPanel> mDataDisplayPanelList;
   private   LinkedList mVerticalSeparatorList;
   private   HorizontalRulerPanel mHorizontalRulerPanel;
   protected Ruler mHorizontalRuler;
@@ -310,39 +310,40 @@ public class ComponentPanel extends Composite {
       AbstractDataDisplay iDisplay = (AbstractDataDisplay)iDspCns
           .newInstance(aCnsArgs);
       
-      iDisplay.addMouseListener(new MouseListener() {
+      iDisplay.addMouseListener(new MouseListener() 
+      {
 		
-		public void mouseUp(MouseEvent e) 
-		{
-		  // TODO Auto-generated method stub
-		  //Event ev;
-		  Event ev=new Event ();
-		  ev.x=e.x;
-		  ev.y=e.y;
-		  notifyListeners(SWT.MouseUp, ev);
-		  //notifyListeners(SWT.MouseUp,new Event);
-		}
-		
-		public void mouseDown(MouseEvent e) 
-		{
-		  // TODO Auto-generated method stub
-		  //JlObject.log("\n\n Mausklick \n\n");
-		  Event ev=new Event ();
-		  ev.x=e.x;
-	      ev.y=e.y;
-		  notifyListeners(SWT.MouseDown, ev);
-		}
-		
-		public void mouseDoubleClick(MouseEvent e) 
-		{
-		  // TODO Auto-generated method stub
-		  //JlObject.log("\n\n Doppelklick \n\n");
-		  Event ev=new Event ();
-	      ev.x=e.x;
-		  ev.y=e.y;	
-		  notifyListeners(SWT.MouseDoubleClick, new Event());
-		}
-	});
+    		public void mouseUp(MouseEvent e) 
+    		{
+    		  // TODO Auto-generated method stub
+    		  //Event ev;
+    		  Event ev=new Event ();
+    		  ev.x=e.x;
+    		  ev.y=e.y;
+    		  notifyListeners(SWT.MouseUp, ev);
+    		  //notifyListeners(SWT.MouseUp,new Event);
+    		}
+    		
+    		public void mouseDown(MouseEvent e) 
+    		{
+    		  // TODO Auto-generated method stub
+    		  //JlObject.log("\n\n Mausklick \n\n");
+    		  Event ev=new Event ();
+    		  ev.x=e.x;
+    	      ev.y=e.y;
+    		  notifyListeners(SWT.MouseDown, ev);
+    		}
+    		
+    		public void mouseDoubleClick(MouseEvent e) 
+    		{
+    		  // TODO Auto-generated method stub
+    		  //JlObject.log("\n\n Doppelklick \n\n");
+    		  Event ev=new Event ();
+    	      ev.x=e.x;
+    		  ev.y=e.y;	
+    		  notifyListeners(SWT.MouseDoubleClick, new Event());
+    		}
+    	});
 
       // Create vertical ruler, spacer and layout
       Ruler iVRuler = iDisplay.createVerticalRuler(iPanel);
@@ -802,7 +803,7 @@ public class ComponentPanel extends Composite {
     mHorizontalRuler.setEnabled(!bAll3D);
   }
 
-	public LinkedList getDataDisplayPanelList()
+	public LinkedList<DataDisplayPanel> getDataDisplayPanelList()
 	{
 	  return mDataDisplayPanelList; 
 	}
