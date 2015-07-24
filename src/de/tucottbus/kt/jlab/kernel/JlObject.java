@@ -174,31 +174,73 @@ public abstract class JlObject implements Cloneable, Serializable
   /**
    * Print and log an error.
    * 
-   * @param sMsg
+   * @param msg
    */
-  public static void ERROR(String sMsg)
+  public static void ERROR(String msg)
   {
-    String sErr =
-      "\n"+at()[2].getFileName()+"("+at()[2].getLineNumber()+") ERROR: "
-      +sMsg+"\n";
-    nErr++;
-    System.err.print(sErr);
+    printMsg("ERROR", msg, false);
+  }
+  
+  /**
+   * Print and log an error.
+   * 
+   * @param msg
+   *          The message.
+   * @param stackTrace
+   *          Print full stack trace.
+   */
+  public static void ERROR(String msg, boolean stackTrace)
+  {
+    printMsg("ERROR", msg, stackTrace);
   }
 
   /**
    * Print and log a warning.
    * 
-   * @param sMsg
+   * @param msg
+   *          The message.
    */
-  public static void WARNING(String sMsg)
+  public static void WARNING(String msg)
   {
-    String sWrn =
-      "\n"+at()[2].getFileName()+"("+at()[2].getLineNumber()+") WARNING: "
-      +sMsg+"\n";
-    nWrn++;
-    System.err.print(sWrn);
+    printMsg("WARNING", msg, false);
+  }
+  
+  /**
+   * Print and log a warning.
+   * 
+   * @param msg
+   *          The message.
+   * @param stackTrace
+   *          Print full stack trace.
+   */
+  public static void WARNING(String msg, boolean stackTrace)
+  {
+    printMsg("WARNING", msg, stackTrace);
   }
 
+  protected static void printMsg(String type, String msg, boolean stackTrace)
+  {
+    String s = "\n";
+    if (!stackTrace) s += at()[3].getFileName()+"("+at()[3].getLineNumber()+") ";
+    s += type+": "+msg+"\n";
+    if (stackTrace)
+      for (int i=3; i<at().length; i++)
+        s += "  at "+at()[i].getClassName()+"."+at()[i].getMethodName()
+          +  "("+at()[i].getFileName()+":"+at()[i].getLineNumber()+")\n";
+    if (type=="ERROR")
+    {
+      System.err.println(s);
+      nErr++;
+    }
+    else if (type=="WARNING")
+    {
+      System.err.println(s);
+      nWrn++;
+    }
+    else
+      System.out.println(s);
+  }
+  
   public static StackTraceElement[] at()
   {
     final Exception e = new Exception();
