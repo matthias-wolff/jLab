@@ -113,14 +113,27 @@ public class JlDataStreamer extends Observable implements Runnable
   }
 
   /**
-   * Stops streaming;
+   * Stops streaming.
    */
   public synchronized void stop()
   {
-    JlObject.log("\n\n   JlDataStreamer.stop()");
+    stop(true);
+  }
+  
+  /**
+   * Stops streaming.
+   */
+  public synchronized void stop(boolean joinRunner)
+  {
+    JlObject.log("\n\n   JlDataStreamer.stop("+joinRunner+")");
     if (runner==null) return;
     bActive = false;
-    try { runner.join(3*nInterval/1000000); } catch (InterruptedException e) {}
+    if (joinRunner)
+    {
+      try { runner.join(100); } catch (InterruptedException e) {}
+      if (runner.isAlive())
+        JlObject.WARNING("JlDataStreamer did not stop.");
+    }
     if (target!=null) target.put(null);
     runner = null;
     idSrc = null;
@@ -182,18 +195,22 @@ public class JlDataStreamer extends Observable implements Runnable
           if (target!=null)
             target.put(idSrc.selectRecs(nRec,nCount).getComp(nComp));
           nRec += nBlockLength;
-          
+
           // At the end of data
-          if (nRec>=idSrc.getLength()) stop();
+          if (nRec>=idSrc.getLength()) { stop(false); break; }
         }
       
       // Compute precise time-out until next data package
       nIte++;
-      long nActualInterval = Math.max(nStartTime+nIte*nInterval-System.nanoTime(),0);
+      long nActualInterval = nStartTime+nIte*nInterval-System.nanoTime();
+      if (nActualInterval<0)
+        JlObject.WARNING("JlDataStreamer.run(): Buffer dispatched too late");
+      nActualInterval =  Math.max(nActualInterval-500000,0); // Wake up 0.5 ms before time-out
       int nIntervalMs = (int)(nActualInterval/1000000);
       int nIntervalNs = (int)(nActualInterval%1000000);
       try { Thread.sleep(nIntervalMs,nIntervalNs); }
       catch (InterruptedException e) {}
     }
   }
+
 }
