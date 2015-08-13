@@ -221,24 +221,24 @@ public abstract class JlObject implements Cloneable, Serializable
   protected static void printMsg(String type, String msg, boolean stackTrace)
   {
     String s = "\n";
-    if (!stackTrace) s += at()[3].getFileName()+"("+at()[3].getLineNumber()+") ";
-    s += type+": "+msg+"\n";
+    s += type+": "+msg;
+    if (!stackTrace) s += " ("+at()[3].getFileName()+":"+at()[3].getLineNumber()+")";
     if (stackTrace)
       for (int i=3; i<at().length; i++)
-        s += "  at "+at()[i].getClassName()+"."+at()[i].getMethodName()
-          +  "("+at()[i].getFileName()+":"+at()[i].getLineNumber()+")\n";
+        s += "\n  at "+at()[i].getClassName()+"."+at()[i].getMethodName()
+          +  "("+at()[i].getFileName()+":"+at()[i].getLineNumber()+")";
     if (type=="ERROR")
     {
-      System.err.println(s);
+      System.err.print(s);
       nErr++;
     }
     else if (type=="WARNING")
     {
-      System.err.println(s);
+      System.err.print(s);
       nWrn++;
     }
     else
-      System.out.println(s);
+      System.out.print(s);
   }
   
   public static StackTraceElement[] at()

@@ -132,7 +132,7 @@ public class JlDataStreamer extends Observable implements Runnable
     {
       try { runner.join(100); } catch (InterruptedException e) {}
       if (runner.isAlive())
-        JlObject.WARNING("JlDataStreamer did not stop.");
+        JlObject.WARNING("Data streamer did not stop.");
     }
     if (target!=null) target.put(null);
     runner = null;
@@ -204,7 +204,7 @@ public class JlDataStreamer extends Observable implements Runnable
       nIte++;
       long nActualInterval = nStartTime+nIte*nInterval-System.nanoTime();
       if (nActualInterval<0)
-        JlObject.WARNING("JlDataStreamer.run(): Buffer dispatched too late");
+        JlObject.WARNING("Data buffer dispatched too late");
       nActualInterval =  Math.max(nActualInterval-500000,0); // Wake up 0.5 ms before time-out
       int nIntervalMs = (int)(nActualInterval/1000000);
       int nIntervalNs = (int)(nActualInterval%1000000);
