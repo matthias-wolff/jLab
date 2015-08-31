@@ -17,10 +17,9 @@ import java.lang.reflect.Array;
  */
 public class JlDataLogger extends JlFifoQueue
 {
-  private static final long serialVersionUID = -4722433480133948870L;
-  private JlData            iData            = null;
-  private int               nComps           = 0;
-  private int               nIncrement       = 0;
+  private JlData iData      = null;
+  private int    nComps     = 0;
+  private int    nIncrement = 0;
 
   public JlDataLogger(Class<?> cType, int nComps, int nCapacity)
   {
@@ -65,37 +64,40 @@ public class JlDataLogger extends JlFifoQueue
         continue;
       }
 
-      if (aBuffer instanceof JlData)
+      synchronized (this)
       {
-        // Append data instance
-        JlData idSrc = (JlData)aBuffer;
-        if (idSrc!=null)
-          iData.cat(idSrc,0,idSrc.getLength(),nIncrement);
-      }
-      else
-      {
-        // Calculate and allocate required additional memory
-        int nLength = Array.getLength(aBuffer);
-        Class<?> cBufferType = aBuffer.getClass().getComponentType();
-        Class<?> cDataType   = iData.getCompType(0);
-        if (!cBufferType.equals(cDataType))
-          throw new Error("Invalid buffer type (" +
-            cBufferType.getSimpleName() + "[]) for this logger (should be " +
-            cDataType.getSimpleName() + "[])");
-        int nFR = iData.getLength();
-        int nXR = nLength / nComps;
-        if (nXR * nComps < nLength) nXR++;
-        iData.allocate(nFR + Math.max(nXR,nIncrement));
-        iData.setNRecs(nFR + nXR);
-        //JlObject.log("\n ::: queLen=" + length() + ", bufLen=" + nLength +
-        //  ", bufType=" + aBuffer.getClass().getSimpleName() +
-        //  ", nFR=" + nFR + ", nXR=" + nXR + ", capacity=" +
-        //  iData.getCapacity());
-  
-        // Copy data
-        for (int nR = nFR, nB = 0; nR < nFR + nXR; nR++)
-          for (int nC = 0; nC < nComps && nB < nLength; nC++, nB++)
-            System.arraycopy(aBuffer, nB, iData.getComp(nC), nR, 1);
+        if (aBuffer instanceof JlData)
+        {
+          // Append data instance
+          JlData idSrc = (JlData)aBuffer;
+          if (idSrc!=null)
+            iData.cat(idSrc,0,idSrc.getLength(),nIncrement);
+        }
+        else
+        {
+          // Calculate and allocate required additional memory
+          int nLength = Array.getLength(aBuffer);
+          Class<?> cBufferType = aBuffer.getClass().getComponentType();
+          Class<?> cDataType   = iData.getCompType(0);
+          if (!cBufferType.equals(cDataType))
+            throw new Error("Invalid buffer type (" +
+              cBufferType.getSimpleName() + "[]) for this logger (should be " +
+              cDataType.getSimpleName() + "[])");
+          int nFR = iData.getLength();
+          int nXR = nLength / nComps;
+          if (nXR * nComps < nLength) nXR++;
+          iData.allocate(nFR + Math.max(nXR,nIncrement));
+          iData.setNRecs(nFR + nXR);
+          //JlObject.log("\n ::: queLen=" + length() + ", bufLen=" + nLength +
+          //  ", bufType=" + aBuffer.getClass().getSimpleName() +
+          //  ", nFR=" + nFR + ", nXR=" + nXR + ", capacity=" +
+          //  iData.getCapacity());
+    
+          // Copy data
+          for (int nR = nFR, nB = 0; nR < nFR + nXR; nR++)
+            for (int nC = 0; nC < nComps && nB < nLength; nC++, nB++)
+              System.arraycopy(aBuffer, nB, iData.getComp(nC), nR, 1);
+        }
       }
     }
   }

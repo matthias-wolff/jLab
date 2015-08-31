@@ -49,6 +49,8 @@ public class JlDataFile extends JlObject
    *          If <code>true</code> the samples will be converted into doubles
    *          and normalized to a range between -1 and 1.
    * @return a {@link JlData} instance containing the audio data
+   * @see <a href="http://stackoverflow.com/questions/26824663/how-do-i-use-audio-sample-data-from-java-sound"
+   * >http://stackoverflow.com/questions/26824663/how-do-i-use-audio-sample-data-from-java-sound</a>
    */
   public static JlData readAudioFile(InputStream is, boolean bNorm)
   {
@@ -71,12 +73,14 @@ public class JlDataFile extends JlObject
       int      nYps = nBps/8;
       double   nSfr = ais.getFormat().getSampleRate();
       boolean  bBen = ais.getFormat().isBigEndian();
+      float    full = (float)Math.pow(2,nBps-1);
       log("\n   - Sampling frequency: "+nSfr+" Hz");
       log("\n   - Frame size        : "+nBpf+" bytes");
       log("\n   - Sample size       : "+nBps+" bits ("+nYps+" bytes)");
       log("\n   - Encoding          : "+enc);
       log("\n   - Channels          : "+nXC);
       log("\n   - Big endian        : "+(bBen?"yes":"no"));
+
       if (bNorm)
         idAudio.addNComps(double.class,nXC);
       else if (nBps>16)
@@ -98,6 +102,8 @@ public class JlDataFile extends JlObject
         double nNorm      = bNorm ? Math.pow(2,nBps-1) : 1;
         if (nYps*8!=nBps)
           throw new Exception("Sample size not an integer byte");
+        if (enc!=Encoding.PCM_SIGNED && enc!=Encoding.PCM_UNSIGNED )
+          throw new Exception("Audio encoding "+enc+" not supported");
 
         // Try to read numBytes bytes from the file.
         while ((nBytesRead = ais.read(aBytes))!=-1)
@@ -108,14 +114,26 @@ public class JlDataFile extends JlObject
             for (int nC=0; nC<nXC; nC++)
             {
               // Read one sample
-              int   nPos = nF*nBpf+nC*nYps;
-              double nVal = 0f;
+              int nPos = nF*nBpf+nC*nYps;
+              long temp = 0;
               for (int i=0; i<nYps; i++)
                 if (bBen)
-                  nVal += (int)(aBytes[nPos+i]&0xFF)<<((nYps-i-1)*8);
+                  temp |= (int)(aBytes[nPos+i]&0xFF)<<((nYps-i-1)*8);
                 else
-                  nVal += (int)(aBytes[nPos+i]&0xFF)<<(i*8);
-              idAudio.dStore(nVal/nNorm,nR,nC);
+                  temp |= (int)(aBytes[nPos+i]&0xFF)<<(i*8);
+              
+              if (enc==Encoding.PCM_SIGNED)
+              {
+                int bitsPerLong = 64;
+                int extensionBits = bitsPerLong - nBps;
+                float sample = (temp << extensionBits) >> extensionBits;
+                idAudio.dStore(sample/nNorm,nR,nC);
+              }
+              else if (enc==Encoding.PCM_UNSIGNED)
+              {
+                float sample = temp - full;
+                idAudio.dStore(sample/nNorm,nR,nC);
+              }
             }
           }
         
@@ -163,7 +181,8 @@ public class JlDataFile extends JlObject
   }
 
   /**
-   * Writes a {@link JlData} instance into an audio file output stream.
+   * Writes a {@link JlData} instance into an audio file output stream. The 
+   * sample size is 16 bits.
    * <p><b style="color:red">NOTE:</b> concept implementation; not thoroughly tested!</p>
    * 
    * @param idData
@@ -187,6 +206,61 @@ public class JlDataFile extends JlObject
         int sample    = (short)idData.dFetch(nR,nC);
         samples[nB  ] = (byte)( sample    &0xFF);
         samples[nB+1] = (byte)((sample>>8)&0xFF);
+      }
+    
+    // Write sample array into audio file stream
+    InputStream      bais = new ByteArrayInputStream(samples);
+    AudioInputStream ais  = new AudioInputStream(bais,af,idData.getLength());
+    AudioSystem.write(ais,AudioFileFormat.Type.WAVE,os);
+  }
+  
+  /**
+   * Writes a {@link JlData} instance into an audio file output stream.
+   * <p><b style="color:red">NOTE:</b> concept implementation; not thoroughly tested!</p>
+   * 
+   * @param idData
+   *          The data container to be written
+   * @param nBitsPerSample
+   *          The number of bits per sample, 16, 24, or 32.
+   * @param os
+   *          The output stream to write the audio file to
+   * @throws IOException
+   *           on I/O problems.
+   * @throws IllegalArgumentException
+   *           if {@code nBitsPerSample} is not 16, 24, or 32.
+   */
+  public static void writeAudioFile(JlData idData, int nBitsPerSample, OutputStream os) 
+  throws IOException
+  {
+    if (nBitsPerSample!=16 && nBitsPerSample!=24 && nBitsPerSample!=32)
+      throw new IllegalArgumentException("Sample size must be 16, 24, or 32 bit");
+    
+    // Compute sample rate
+    float nSrate = 16000;
+    if (idData.rinc<=0)
+      JlObject.WARNING("Cannot compute sample rate from record increment "
+        + idData.rinc +". Using 16000 Hz.");
+    else if ("s".equals(idData.runit))
+      nSrate = (float)(1./idData.rinc);
+    else if ("ms".equals(idData.runit))
+      nSrate = (float)(1000./idData.rinc);
+    else
+      JlObject.WARNING("Cannot compute sample rate from record unit \""
+        + idData.runit +"\". Using 16000 Hz.");
+    
+    // Initialize
+    short     nYps = (short)(nBitsPerSample/8); // Bytes per sample
+    byte[] samples = new byte[idData.getLength()*idData.getDimension()*nYps];
+    int      nChan = idData.getDimension();
+    AudioFormat af = new AudioFormat(nSrate,nBitsPerSample,nChan,true,false);
+    
+    // Create sample array from data container
+    for (int nB=0, nR=0; nR<idData.getLength(); nR++)
+      for (int nC=0; nC<idData.getDimension(); nC++, nB+=nYps)
+      {
+        int sample = (int)idData.dFetch(nR,nC);
+        for (int nI=0; nI<nYps; nI++)
+          samples[nB+nI] = (byte)(sample>>(nI*8)&0xFF);
       }
     
     // Write sample array into audio file stream

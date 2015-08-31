@@ -197,6 +197,24 @@ public class JlData extends JlObject
   }
 
   /**
+   * Creates a new data instance from a short array.
+   * 
+   * @param aData
+   *          The initialization data
+   * @param sCompName
+   *          The component name
+   */
+  public JlData(int[] aData, String sCompName)
+  {
+    aComps = (JlDataComp[])Array.newInstance(JlDataComp.class,1);
+    JlDataComp comp = new JlDataComp(int.class,sCompName,aData.length);
+    comp.iData = aData;
+    aComps[0] = comp;
+    nCapacity = aData.length;
+    nLength = aData.length;
+  }
+  
+  /**
    * Create JlData instance from array that contains a number of data vectors. nVectorLen defines
    * the length of the vectors. Each vector is stored in a new component. The last component is
    * filled with zeros if necessary.
@@ -234,7 +252,6 @@ public class JlData extends JlObject
 
   public JlData(short[] aShort, int nVectorLen)
   {
-
     if (aShort.length <= 0) return;
     int nComps = aShort.length / nVectorLen;
     short[] b = new short[nVectorLen];
@@ -255,6 +272,28 @@ public class JlData extends JlObject
     nLength = nVectorLen;
   }
 
+  public JlData(int[] aInt, int nVectorLen)
+  {
+    if (aInt.length <= 0) return;
+    int nComps = aInt.length / nVectorLen;
+    int[] b = new int[nVectorLen];
+
+    if (aInt.length % nVectorLen != 0.0) nComps++;
+    aComps = (JlDataComp[])Array.newInstance(JlDataComp.class, nComps);
+
+    for (int i = 0; i < nComps; i++)
+    {
+      JlDataComp comp = new JlDataComp(int.class, "comp_" + i, nVectorLen);
+      System.arraycopy(aInt, i * nVectorLen, b, 0, aInt.length < nVectorLen ? aInt.length
+          : nVectorLen);
+      comp.iData = b.clone();
+      aComps[i] = comp;
+    }
+
+    nCapacity = nVectorLen;
+    nLength = nVectorLen;
+  }
+  
   /**
    * Creates a new <code>JlData</code> instance from a formatted string.
    * <h4>Remarks</h4>

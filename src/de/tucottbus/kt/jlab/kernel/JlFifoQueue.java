@@ -69,9 +69,11 @@ public abstract class JlFifoQueue extends JlAsyncObservable implements Runnable
   }
 
   /**
-   * Stops the FIFO object queue. The method blocks (for at most 1000 milliseconds) until the queue thread terminates.
-   * After the queue thread has terminated, the method calls the <code>process</code> method with the argument
-   * <code>bFlush=true</code>. After calling <code>process</code> the object queue is destroyed.
+   * Stops the FIFO object queue. The method blocks (for at most 1000
+   * milliseconds) until the queue thread terminates. After the queue thread has
+   * terminated, the method calls the <code>process</code> method with the
+   * argument <code>bFlush=true</code>. After calling <code>process</code> the
+   * object queue is destroyed.
    */
   public void stop()
   {
@@ -89,6 +91,14 @@ public abstract class JlFifoQueue extends JlAsyncObservable implements Runnable
     flush();
   }
 
+  /**
+   * Determines if this queue is running.
+   */
+  public boolean isRunning()
+  {
+    return (bRun && iProcessor!=null && iProcessor.isAlive());
+  }
+  
   /**
    * Changes the processing priority of this queue.
    * 
@@ -123,8 +133,9 @@ public abstract class JlFifoQueue extends JlAsyncObservable implements Runnable
   }
   
   /**
-   * Flushes the FIFO object queue. If (and only if) there are objects left in the queue, the method calls
-   * <code>process</code> with the <code>bFlush</code> argument set to <code>true</code> and blocks until
+   * Flushes the FIFO object queue. If (and only if) there are objects left in
+   * the queue, the method calls <code>process</code> with the
+   * <code>bFlush</code> argument set to <code>true</code> and blocks until
    * <code>process</code> returns.
    */
   public synchronized void flush()
@@ -200,25 +211,30 @@ public abstract class JlFifoQueue extends JlAsyncObservable implements Runnable
   }
 
   /**
-   * Processes the objects contained in the FIFO queue. The method will be called exactly once per enqueued object with
-   * the argument <code>bFlush</code> set to <code>false</code>. The method will additionally be called exactly
-   * once with the argument <code>bFlush</code> set to <code>true</code> when the queue is being stopped using the
+   * Processes the objects contained in the FIFO queue. The method will be
+   * called exactly once per enqueued object with the argument
+   * <code>bFlush</code> set to <code>false</code>. The method will additionally
+   * be called exactly once with the argument <code>bFlush</code> set to
+   * <code>true</code> when the queue is being stopped using the
    * <code>stop</code> method.
    * 
    * @param bFlush
-   *          If <code>true</code>, the implementation must process all objects left in the queue. The queue and all
-   *          enqueued objects will be destroyed immediately after <code>process</code> returns.
+   *          If <code>true</code>, the implementation must process all objects
+   *          left in the queue. The queue and all enqueued objects will be
+   *          destroyed immediately after <code>process</code> returns.
    */
   protected abstract void process(boolean bFlush);
 
   /**
-   * This method is called instead of process if bypass mode is set by <code>setBypass()</code>. In bypass mode all 
-   * objects in the queue are fed to the output queue without modification. 
+   * This method is called instead of process if bypass mode is set by
+   * <code>setBypass()</code>. In bypass mode all objects in the queue are fed
+   * to the output queue without modification.
    * 
-   * @param bFlush true enables, false disables bypass 
+   * @param bFlush
+   *          {@code true} enables, {@code false} disables bypassing
    *
-   * @see isBypass()  
-   * @see setBypass()  
+   * @see isBypass()
+   * @see setBypass()
    */
   private void bypass(boolean bFlush)
   {
@@ -231,7 +247,8 @@ public abstract class JlFifoQueue extends JlAsyncObservable implements Runnable
   }
 
   /**
-   * Waits until the queue has been changed and asynchroneously calls <code>process</code> or <code>bypass</code>. 
+   * Waits until the queue has been changed and asynchronously calls
+   * <code>process</code> or <code>bypass</code>.
    */
   public void run()
   {
