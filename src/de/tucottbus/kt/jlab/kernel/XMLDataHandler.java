@@ -384,7 +384,7 @@ class XMLDataHandler extends DefaultHandler
     nR++;
     if (idData.getCapacity()<=nR)
       idData.allocate(nR+1000);
-    idData.setNRecs(nR);
+    idData.setNRecs(nR+1);
     nC = -1;
   }
   

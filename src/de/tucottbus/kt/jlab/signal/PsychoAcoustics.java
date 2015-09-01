@@ -139,6 +139,8 @@ public class PsychoAcoustics
       throw new IllegalArgumentException("Bandwidth not positive");
     
     // 1. Initialize
+    if (maxMaskers<0)
+      maxMaskers=laps.length;
     JlData idMaskersInt = new JlData();
     int nCompFe = idMaskersInt.addComp(float.class,"~f");
     int nCompB = idMaskersInt.addComp(float.class,"B");

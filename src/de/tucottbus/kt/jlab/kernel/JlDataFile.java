@@ -287,20 +287,20 @@ public class JlDataFile extends JlObject
   }
   
   /**
-   * Writes a {@link JlData} instance into a dLabPro compatible XML file.
+   * Writes a {@link JlData} instance into a dLabPro compatible XML stream.
    * <p><b style="color:red">NOTE:</b> concept implementation; not thoroughly
    * tested!</p>
    * 
    * @param idData
    *          The data instance
-   * @param iFile
-   *          The file
+   * @param os
+   *          The output stream
    * @throws IOException
    */
-  public static void writeXmlFile(JlData idData, File iFile)
+  public static void writeXml(JlData idData, OutputStream os)
   throws IOException
   {
-    BufferedWriter iFwr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(iFile),"ISO-8859-1"));
+    BufferedWriter iFwr = new BufferedWriter(new OutputStreamWriter(os,"ISO-8859-1"));
     
     // Preamble, instance and field tags
     String sLsep  = System.getProperty("line.separator");
@@ -364,6 +364,23 @@ public class JlDataFile extends JlObject
     iFwr.write("</INSTANCE>"+sLsep);
     
     iFwr.close();
+  }
+  
+  /**
+   * Writes a {@link JlData} instance into a dLabPro compatible XML file.
+   * <p><b style="color:red">NOTE:</b> concept implementation; not thoroughly
+   * tested!</p>
+   * 
+   * @param idData
+   *          The data instance
+   * @param iFile
+   *          The file
+   * @throws IOException
+   */
+  public static void writeXmlFile(JlData idData, File iFile)
+  throws IOException
+  {
+    writeXml(idData,new FileOutputStream(iFile));
   }
   
   /**
