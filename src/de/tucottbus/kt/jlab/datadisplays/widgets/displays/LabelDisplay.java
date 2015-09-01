@@ -95,6 +95,7 @@ public class LabelDisplay extends AbstractDataDisplay
       asComp = (String[])m_aDci[0].iData.getComp(comp);
     String s1 = (String)m_aDci[0].iData.fetch(m_nFirstRec,comp);
     String s2 = null;
+    if (s1==null) s1="";
     if (iGc.getDevice() instanceof Printer)
       iGc.setForeground(iGc.getDevice().getSystemColor(SWT.COLOR_BLACK));
     else

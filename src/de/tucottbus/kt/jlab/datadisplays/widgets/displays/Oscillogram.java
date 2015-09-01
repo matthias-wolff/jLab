@@ -434,6 +434,8 @@ public class Oscillogram extends AbstractRvDataDisplay implements Playable
 	public int getSrate() {
 		if (m_aDci[0].iData.rinc == 0)
 			return 0;
+		if ("s".equals(m_aDci[0].iData.runit))
+		  return (int) (1. / m_aDci[0].iData.rinc);
 		return (int) (1000. / m_aDci[0].iData.rinc);
 	}
 
