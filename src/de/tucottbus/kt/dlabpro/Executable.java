@@ -509,32 +509,33 @@ public abstract class Executable extends Observable implements Runnable
       {
         try
         {
-          if (lineMode || is.available()>0)
-          {
-            int in = is.read();
-            if (in<0) break;
-            char c = (char)in;
-            if (c=='\n' || c=='\r')
+          while (is.available()>0)
+            if (lineMode || is.available()>0)
             {
-              if (!lineMode && (c=='\r'||!cr))
-                line += "\n";
-              if (line.length()>0)
-                dispatchMessage(type,line);
-              line = "";
+              int in = is.read();
+              if (in<0) break;
+              char c = (char)in;
+              if (c=='\n' || c=='\r')
+              {
+                if (!lineMode && (c=='\r'||!cr))
+                  line += "\n";
+                if (line.length()>0)
+                  dispatchMessage(type,line);
+                line = "";
+              }
+              else
+                line+=c;
+              cr = (c=='\r');
             }
             else
-              line+=c;
-            cr = (c=='\r');
-          }
-          else
-            try
-            {
-              Thread.sleep(10);
-              if (line.length()>0)
-                dispatchMessage(type,line);
-              line = "";
-            }
-            catch (InterruptedException e2) {}
+              try
+              {
+                Thread.sleep(10);
+                if (line.length()>0)
+                  dispatchMessage(type,line);
+                line = "";
+              }
+              catch (InterruptedException e2) {}
         }
         catch (IOException e)
         {

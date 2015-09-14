@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
@@ -166,6 +167,12 @@ public class Recognizer extends Executable
     super(exeFile,null);
     this.config  = config!=null ? new Properties(config) : new Properties();
   }
+  
+  protected Recognizer(File exeFile, ArrayList<String> args)
+  throws FileNotFoundException
+  {
+    super(exeFile,args);
+  }
 
   // -- Input and output --
   
@@ -177,6 +184,7 @@ public class Recognizer extends Executable
    * @param value
    *          The new value.
    */
+
   public void setOption(String key, String value)
   {
     try
@@ -354,6 +362,72 @@ public class Recognizer extends Executable
     dispatchMessage(MSGT_WRP,msg);
   }
 
+  // -- Static API --
+  
+  public static AbstractList<String> listAudioDevices(File exeFile)
+  {
+    ArrayList<String> audioDevices = new ArrayList<String>();
+    Pattern pattern = Pattern.compile("<Device (\\d+)\\:.+? Name: (.+)");
+    
+    try
+    {
+      ArrayList<String> args = new ArrayList<String>(); args.add("-l");
+      Executable recognizer = new Executable(exeFile,args)
+      {
+        
+        @Override
+        public boolean isLineMode()
+        {
+          return false;
+        }
+        
+        @Override
+        public ArrayList<String> getFixArguments()
+        {
+          return null;
+        }
+        
+        @Override
+        public String getExitCommand()
+        {
+          return null;
+        }
+      };
+      recognizer.addObserver(new Observer()
+      {
+        @Override
+        public void update(Observable o, Object arg)
+        {
+          if (arg!=null && arg instanceof String)
+          {
+            String s = (String)arg;
+            Matcher m = pattern.matcher(s.trim());
+            if (m.matches())
+              audioDevices.add(m.group(1)+":"+m.group(2));
+          }
+        }
+      });
+      while (recognizer.isAlive())
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+    }
+    catch (Exception e)
+    {
+      e.printStackTrace();
+    }
+    return audioDevices;
+  }
+  
+  public static int getAudioDeviceIdForName(File exeFile, String name)
+  {
+    AbstractList<String> audioDevices = listAudioDevices(exeFile);
+    for (String s:audioDevices)
+    {
+      String[] fields = s.split(":");
+      if (fields[1].contains(name))
+        return Integer.valueOf(fields[0]);
+    }
+    return -1;
+  }
   
   // -- Main method --
   
@@ -380,7 +454,7 @@ public class Recognizer extends Executable
   {
     try
     {
-      final Recognizer rec = new Recognizer(findExecutable("recognizer"),null);
+      final Recognizer rec = new Recognizer(findExecutable("recognizer"),(Properties)null);
       rec.addObserver(new Observer()
       {
         @Override
