@@ -24,9 +24,9 @@ public class JlStatistics
       throw new IllegalArgumentException("Operands have different sizes ("
       + P.length+"!="+Q.length+")");
 
-    float sumP = 0;
-    float sumQ = 0;
-    float dkl  = 0;
+    double sumP = 0;
+    double sumQ = 0;
+    double dkl  = 0;
     for (int i=0; i<P.length; i++)
     {
       if (P[i]<0) throw new IllegalArgumentException("P["+i+"] < 0");
@@ -37,12 +37,12 @@ public class JlStatistics
       double q = Math.max(1E-100,Q[i]);
       dkl += P[i]*(Math.log(p)-Math.log(q));
     }
-    if (Math.abs(1-sumP)<1E-10)
-      throw new IllegalArgumentException("P does not sum up to 1");
-    if (Math.abs(1-sumQ)<1E-10)
-      throw new IllegalArgumentException("Q does not sum up to 1");
+    if (Math.abs(1-sumP)>1E-5)
+      throw new IllegalArgumentException("P does not sum up to 1 (but to "+sumP+")");
+    if (Math.abs(1-sumQ)>1E-5)
+      throw new IllegalArgumentException("Q does not sum up to 1 (but to "+sumQ+")");
 
-    return dkl;
+    return (float)dkl;
   }
   
 }

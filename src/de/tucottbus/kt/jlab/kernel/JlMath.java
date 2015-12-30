@@ -707,6 +707,88 @@ public class JlMath
     for (int i=0; i<b.length; i++) b[i]=(float)e[i];
     return b;
   }  
+
+  // -- Resampling --
+  
+  /**
+   * Resamples an array of double values through linear interpolation.
+   * 
+   * @param a
+   *          The input array.
+   * @param n
+   *          The size of the resampled array.
+   * @return The resampled array or {@code null} if {@code a}={@code null}.
+   */
+  public static double[] resampleLinear(double[] a, int n)
+  {
+    if (a==null)
+      return null;
+    double[] b = new double[n];
+//    double scale = (double)n/(double)a.length;
+    if (n==a.length)
+      System.arraycopy(a,0,b,0,n);
+    else //if (scale>1) // upsampling: linear interpolation
+    {
+//      System.err.println("Linear upsampling, scale="+scale);
+      for (int i=0; i<n; i++)
+      {
+        double x = (double)i/(double)n*a.length;
+        int j0 = (int)Math.floor(x);
+        int j1 = j0+1;
+        double f0 = 1-(x-j0);
+        double f1 = 1-(j1-x);
+        b[i] = f0*a[j0] + (j1<a.length?f1*a[j1]:0);
+//        System.err.println("b["+i+"] = a["+x+"] = "+f0+"*a["+j0+"]+"+f1
+//          + (j1<a.length?("*a["+j1+"]"):"*0")+" = "+b[i]);
+      }
+    }
+//    else // downsampling: weighted sum
+//    {
+//      System.err.println("Linear downsampling, scale="+scale);
+//      for (int i=0; i<n; i++)
+//      {
+//        double x0 = (double)i/(double)n*a.length;
+//        double x1 = (double)(i+1)/(double)n*a.length;
+//        int j0 = (int)Math.floor(x0);
+//        int j1 = (int)Math.floor(x1);
+//                                     System.err.print("b["+i+"] = sum[a["+x0+"],a["+x1+"]) = (");
+//        double f0 = j0+1-x0;
+//        b[i] = f0*a[j0];             System.err.print(f0+"*a["+j0+"]");
+//        for (int j=j0+1; j<j1; j++)
+//        {
+//          b[i] += a[j];              System.err.print("+1*a["+j+"]");
+//        }
+//        double f1 = x1-j1;
+//        if (f1>0)
+//        {
+//          b[i] = f1*a[j1];           System.err.print("+"+f1+"*a["+j1+"]");
+//        }
+//        b[i] *= scale;               System.err.println(")/"+(1/scale)+" = "+b[i]);
+//      }
+//    }
+    return b;
+  }
+
+  /**
+   * Resamples an array of float values through linear interpolation.
+   * 
+   * @param a
+   *          The input array.
+   * @param n
+   *          The size of the resampled array.
+   * @return The resampled array or {@code null} if {@code a}={@code null}.
+   */
+  public static float[] resampleLinear(float[] a, int n)
+  {
+    if (a==null) return null;
+    double[] a1 = new double[a.length];
+    for (int i=0; i<a.length; i++) a1[i] = a[i];
+    double[] b1 = resampleLinear(a1,n);
+    float[] b = new float[n];
+    for (int i=0; i<n; i++) b[i] = (float)b1[i];
+    return b;
+  }
+  
 }
 
 // EOF
