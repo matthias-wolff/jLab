@@ -2,6 +2,8 @@
 
 package de.tucottbus.kt.jlab.signal;
 
+import java.util.Arrays;
+
 import de.tucottbus.kt.jlab.kernel.JlData;
 import de.tucottbus.kt.jlab.kernel.JlMath;
 
@@ -139,8 +141,6 @@ public class PsychoAcoustics
       throw new IllegalArgumentException("Bandwidth not positive");
     
     // 1. Initialize
-    if (maxMaskers<0)
-      maxMaskers=laps.length;
     JlData idMaskersInt = new JlData();
     int nCompFe = idMaskersInt.addComp(float.class,"~f");
     int nCompB = idMaskersInt.addComp(float.class,"B");
@@ -158,7 +158,7 @@ public class PsychoAcoustics
         laps[n]=Float.NEGATIVE_INFINITY;
     }
 
-    while (idMaskersInt.getLength()<maxMaskers)
+    while (idMaskersInt.getLength()<laps.length)
     {
       // 2. Set levels below current masked threshold to -infinity
       for (int n=0; n<laps.length; n++)
@@ -202,7 +202,15 @@ public class PsychoAcoustics
     }
     
     if (idMaskers!=null)
+    {
+      if (idMaskersInt.getLength()>maxMaskers)
+      {
+        // Filter maskers
+        Arrays.sort((float[])idMaskersInt.getComp(0));
+        idMaskersInt = idMaskersInt.selectRecs(0,maxMaskers);
+      }
       idMaskers.copy(idMaskersInt);
+    }
     return aMt;
   }
 
