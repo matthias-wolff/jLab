@@ -429,25 +429,25 @@ public class JlDataFile extends JlObject
   {
     if (file==null) throw new IllegalArgumentException();
     
-    System.out.print("\nJlDataFile.readXml \""+file.getAbsolutePath()+"\"");
+    //System.out.print("\nJlDataFile.readXml \""+file.getAbsolutePath()+"\"");
     FileInputStream fis = null;
     GZIPInputStream zis = null; 
     try
     {
-      System.out.print("\n- Try loading XML GZipped ... ");
+      //System.out.print("\n- Try loading XML GZipped ... ");
       fis = new FileInputStream(file);
       zis = new GZIPInputStream(fis);
       return readXml(zis,warnings);
     }
     catch (ZipError | ZipException e)
     {
-      System.out.print("FAILED ("+e.toString()+")\n- Try loading XML ... ");
+      //System.out.print("FAILED ("+e.toString()+")\n- Try loading XML ... ");
       fis = new FileInputStream(file);
       return readXml(fis,warnings);
     }
     finally
     {
-      System.out.print("\n- cleanup");
+      //System.out.print("\n- cleanup");
       if (zis!=null) zis.close();
       if (fis!=null) fis.close();
     }
