@@ -60,7 +60,6 @@ public class JlDataFile extends JlObject
     }
     catch (Exception e)
     {
-      e.printStackTrace();
       return false;
     }
     finally
