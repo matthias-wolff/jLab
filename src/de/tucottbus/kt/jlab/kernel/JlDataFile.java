@@ -40,6 +40,38 @@ public class JlDataFile extends JlObject
   private static final long serialVersionUID = -3699557382883493385L;
 
   /**
+   * Tests if a file is a readable audio file.
+   * 
+   * @param iFile
+   *          The file.
+   * @return {@code true} if the file is a audio file and can be read through
+   *         {@link #readAudioFile(File, boolean)}, {@code false} otherwise.
+   * @see #readAudioFile(File, boolean)
+   */
+  public static boolean isAudioFile(File iFile)
+  {
+    FileInputStream fis = null;
+    try
+    {
+      fis = new FileInputStream(iFile);
+      BufferedInputStream bis = new BufferedInputStream(fis);
+      AudioSystem.getAudioInputStream(bis);
+      fis.close();
+    }
+    catch (Exception e)
+    {
+      e.printStackTrace();
+      return false;
+    }
+    finally
+    {
+      if (fis!=null)
+        try { fis.close(); } catch (Exception e2) {};
+    }
+    return true; 
+  }
+  
+  /**
    * Reads an audio file input stream into a {@link JlData} instance.
    * <p><b style="color:red">NOTE:</b> concept implementation; not thoroughly
    * tested!</p>
@@ -51,6 +83,7 @@ public class JlDataFile extends JlObject
    * @return a {@link JlData} instance containing the audio data
    * @see <a href="http://stackoverflow.com/questions/26824663/how-do-i-use-audio-sample-data-from-java-sound"
    * >http://stackoverflow.com/questions/26824663/how-do-i-use-audio-sample-data-from-java-sound</a>
+   * @see #isAudioFile(File)
    */
   public static JlData readAudioFile(InputStream is, boolean bNorm)
   {
