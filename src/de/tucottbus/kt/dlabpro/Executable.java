@@ -495,6 +495,7 @@ public abstract class Executable extends Observable implements Runnable
       if (type==Executable.MSGT_ERR)
         is = process.getErrorStream();
       this.type = type;
+      this.setName("Executable.OutputPipeHandler("+type+")");
       //setDaemon(true);
     }
     
@@ -541,6 +542,7 @@ public abstract class Executable extends Observable implements Runnable
         {
           e.printStackTrace();
         }
+        try { Thread.sleep(10); } catch (InterruptedException e) {}
       }
       try { is.close(); } catch (IOException e) { e.printStackTrace(); }
       if (line.length()>0)
